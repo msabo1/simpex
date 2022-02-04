@@ -1,0 +1,189 @@
+<div #container fxLayout="column" fxLayoutAlign="center">
+  <div *ngIf="storyStep == 0">
+    Nakon standardizacije, rješavamo sljedeći ekvivalentni problem linearnog
+    programiranja
+    <div style="background-color: #f2f2f2">
+      <div fxLayout="row" fxLayoutAlign="center center">
+        {{ result.c | vector }}
+        <mat-icon>arrow_right_alt</mat-icon>min
+      </div>
+      <div fxLayout="row" fxLayoutAlign="center center">uz uvjete</div>
+      <div
+        *ngFor="let row of result.A; let i = index"
+        fxLayout="row"
+        fxLayoutAlign="center center"
+      >
+        {{ row | vector }}
+        = {{ result.b[i] }}
+      </div>
+      <div fxLayout="row" fxLayoutAlign="center center">
+        <ng-container *ngFor="let elem of result.c; let i = index"
+          >x{{ i + 1 }}{{ i == result.c.length - 1 ? "" : ", " }}</ng-container
+        >
+        >= 0
+      </div>
+    </div>
+  </div>
+  <div *ngIf="storyStep == 1">
+    Kako bismo odredili početno bazično dopustivo rješenje, riješimo prvo
+    pomoćni problem
+    <div style="background-color: #f2f2f2">
+      <div fxLayout="row" fxLayoutAlign="center center">
+        {{ result.c2[0] | vector }}
+        <mat-icon>arrow_right_alt</mat-icon>min
+      </div>
+      <div fxLayout="row" fxLayoutAlign="center center">uz uvjete</div>
+      <div
+        *ngFor="let row of result.A2; let i = index"
+        fxLayout="row"
+        fxLayoutAlign="center center"
+      >
+        {{ row | vector }}
+        = {{ result.b2[i] }}
+      </div>
+      <div fxLayout="row" fxLayoutAlign="center center">
+        <ng-container *ngFor="let elem of result.c2[0]; let i = index"
+          >x{{ i + 1
+          }}{{ i == result.c2[0].length - 1 ? "" : ", " }}</ng-container
+        >
+        >= 0
+      </div>
+    </div>
+  </div>
+  <table
+    *ngIf="storyStep > 1"
+    style="border-collapse: collapse; background-color: #f2f2f2"
+  >
+    <tr>
+      <td
+        style="
+          border-bottom: 1px solid lightgray;
+          border-right: 1px solid lightgray;
+        "
+      >
+        {{ result.tables[phase][step][0][0] | number: "1.0-4" }}
+      </td>
+      <td
+        *ngFor="let x of getInfluences()"
+        style="border-bottom: 1px solid lightgray"
+      >
+        {{ x | number: "1.0-4" }}
+      </td>
+    </tr>
+    <tr *ngFor="let row of getTableWithoutFirstRow(); let i = index">
+      <td style="border-right: 1px solid lightgray">
+        x{{ result.bases[phase][step][i] + 1 }} = {{ row[0] | number: "1.0-4" }}
+      </td>
+      <td
+        *ngFor="let x of getARow(row); let j = index"
+        [ngClass]="
+          !last &&
+          i + 1 == result.pivots[phase][step][0] &&
+          j + 1 == result.pivots[phase][step][1]
+            ? 'pivot'
+            : ''
+        "
+      >
+        {{ x | number: "1.0-4" }}
+      </td>
+    </tr>
+  </table>
+  <div *ngIf="storyStep > 1 && !last" class="mt-1">
+    Prema
+    <b>
+      <ng-container *ngIf="result.strategy == 'bland'"
+        >Blandovom pravilu</ng-container
+      >
+      <ng-container *ngIf="result.strategy == 'lex'"
+        >leksikografskom pravilu</ng-container
+      >
+      <ng-container *ngIf="result.strategy == 'rand'"
+        >random pravilu</ng-container
+      >
+    </b>
+    u bazu ulazi <b>x{{ result.pivots[phase][step][1] }}</b
+    >, a izlazi
+    <b
+      >x{{
+        result.bases[phase][step][result.pivots[phase][step][0] - 1] + 1
+      }}</b
+    >.
+  </div>
+
+  <div *ngIf="storyStep == 2 && last && result.status == 1" class="mt-1">
+    Više nema negativnih utjecaja, što znači da smo došli do kraja prve faze, no
+    vrijednost funkcije cilje nije <b>0</b> pa zadani problem nema rješenja.
+  </div>
+
+  <div
+    *ngIf="storyStep == 2 && last && (result.status == 0 || result.status == 2)"
+    class="mt-1"
+    style="width: 100%"
+  >
+    Više nema negativnih utjecaja, što znači da smo došli do kraja prve faze.
+    Sada odbacujemo artificijelne varijable koje smo dodali u pomoćnom problemu
+    te preračunavamo prvi redak tablice.
+  </div>
+
+  <div *ngIf="storyStep == 3 && last && result.status == 0" class="mt-1">
+    Više nema negativnih utjecaja, što znači da smo gotovi.
+    <div>
+      Optimalna vrijednost funckije cilja:
+      <b>{{
+        (result.goal == "min" ? -result.table[0][0] : result.table[0][0])
+          | number: "1.0-4"
+      }}</b>
+    </div>
+    <div>
+      Optimalno rješenje
+      <b
+        >x = [
+        <ng-container *ngFor="let x of result.realBase"
+          >{{ x | number: "1.0-4" }}
+        </ng-container>
+        ]</b
+      >
+    </div>
+  </div>
+
+  <div *ngIf="storyStep == 3 && last && result.status == 2" class="mt-1">
+    Postoji utjecaj koji nije pozitivan, ali ne možemo odabrati pivot element
+    što znači da je rješenje neograničeno te da je optimalna vrijednost funkcije
+    cilja <b *ngIf="result.goal == 'max'">inf</b
+    ><b *ngIf="result.goal == 'min'">-inf</b>
+  </div>
+
+  <div fxLayout="row" fxLayoutAlign="space-between">
+    <div>
+      <button
+        *ngIf="
+          (storyStep > 0 && result.mode == 'text') ||
+          (storyStep > 1 && result.mode == 'matrix')
+        "
+        mat-button
+        color="accent"
+        (click)="prevStep()"
+      >
+        Prethodni korak
+      </button>
+    </div>
+
+    <div>
+      <button
+        *ngIf="
+          !(
+            (step == result.tables[1].length - 1 && phase == 1) ||
+            (step == result.tables[0].length - 1 &&
+              phase == 0 &&
+              result.status == 1)
+          )
+        "
+        mat-button
+        color="primary"
+        (click)="nextStep()"
+      >
+        Idući korak
+      </button>
+    </div>
+  </div>
+</div>

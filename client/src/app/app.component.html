@@ -1,0 +1,240 @@
+<mat-toolbar color="primary" fxLayout="row" fxLayoutAlign="center center" fx>
+  <span>Simpleks solver</span>
+</mat-toolbar>
+
+<div fxLayout="column" fxLayoutAlign="center center">
+  <mat-card style="width: 400px">
+    <mat-card-content>
+      <div fxLayout="row">
+        <button
+          mat-icon-button
+          matTooltip="Tekstualni unos"
+          (click)="setMode('text')"
+          [disabled]="mode == 'text'"
+        >
+          <mat-icon>edit_note</mat-icon>
+        </button>
+        <button
+          mat-icon-button
+          matTooltip="Matrični unos"
+          (click)="setMode('matrix')"
+          [disabled]="mode == 'matrix'"
+        >
+          <mat-icon>table_view</mat-icon>
+        </button>
+        <button
+          mat-icon-button
+          matTooltip="Povijest unosa"
+          [disabled]="history.length == 0"
+          [matMenuTriggerFor]="historyMenu"
+        >
+          <mat-icon>history</mat-icon>
+        </button>
+        <mat-menu #historyMenu="matMenu">
+          <button
+            mat-menu-item
+            *ngFor="let elem of history"
+            (click)="setState(elem)"
+          >
+            <mat-icon>{{
+              elem.mode == "text" ? "edit_note" : "table_view"
+            }}</mat-icon>
+            <span>{{ elem.func || elem.c }}</span>
+          </button>
+        </mat-menu>
+      </div>
+
+      <mat-divider></mat-divider>
+      <form
+        fxLayout="column"
+        [formGroup]="textForm"
+        class="mt-1"
+        *ngIf="mode == 'text'"
+      >
+        <div fxLayout="row" fxLayoutAlign="center center">
+          <mat-form-field fxFlex="100%">
+            <mat-label>Funkcija cilja</mat-label>
+            <input
+              formControlName="func"
+              type="text"
+              matInput
+              placeholder="2x1 + 3x2 + 4x3"
+              (change)="onFieldChange()"
+            />
+          </mat-form-field>
+          <mat-icon aria-hidden="false">arrow_right_alt</mat-icon>
+
+          <mat-form-field style="width: 100px">
+            <mat-label>Cilj</mat-label>
+            <mat-select
+              formControlName="goal"
+              (selectionChange)="onFieldChange()"
+            >
+              <mat-option value="min">min</mat-option>
+              <mat-option value="max">max</mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+
+        <br />
+        <mat-form-field>
+          <mat-label>Uvjeti</mat-label>
+          <textarea
+            (change)="onFieldChange()"
+            formControlName="conditions"
+            matInput
+            rows="6"
+            placeholder="x1 + x2 - x3 = 5
+x1 - x2 >= 3
+x2 + x3 <= 1"
+          ></textarea>
+          <mat-hint>Uvjeti moraju biti odvojeni novom linijom</mat-hint>
+        </mat-form-field>
+        <mat-form-field class="mt-1">
+          <mat-label>Strategija pivotiranja</mat-label>
+          <mat-select
+            formControlName="strategy"
+            (selectionChange)="onFieldChange()"
+          >
+            <mat-option value="bland">Blandovo pravilo</mat-option>
+            <mat-option value="lex">Leksikografsko pravilo</mat-option>
+            <mat-option value="rand">Random</mat-option>
+          </mat-select>
+        </mat-form-field>
+        <button
+          [disabled]="textForm.invalid"
+          mat-raised-button
+          color="primary"
+          (click)="solve()"
+        >
+          Pronađi rješenje
+        </button>
+      </form>
+
+      <form
+        fxLayout="column"
+        [formGroup]="matrixForm"
+        class="mt-1"
+        *ngIf="mode == 'matrix'"
+      >
+        <b>Problem mora biti u standardnom obliku.</b>
+        <mat-form-field class="mt-1">
+          <mat-label>Vektor cijena (c)</mat-label>
+          <input
+            formControlName="c"
+            type="text"
+            matInput
+            placeholder="2 3 4"
+            (change)="onFieldChange()"
+          />
+          <mat-hint>Elementi odvojeni razmakom</mat-hint>
+        </mat-form-field>
+
+        <br />
+        <mat-form-field class="mt-1">
+          <mat-label>Matrica lijeve strane uvijeta (A)</mat-label>
+          <textarea
+            (change)="onFieldChange()"
+            formControlName="A"
+            matInput
+            rows="6"
+            placeholder="1 2 3
+4 5 6
+7 8 9"
+          ></textarea>
+          <mat-hint
+            >Elementi retka odvojeni razmakom, reci odvojeni novom
+            linijom</mat-hint
+          >
+        </mat-form-field>
+        <mat-form-field class="mt-1">
+          <mat-label>Vektor desne strane uvijeta (b)</mat-label>
+          <input
+            formControlName="b"
+            type="text"
+            matInput
+            placeholder="2 3 4"
+            (change)="onFieldChange()"
+          />
+          <mat-hint>Elementi odvojeni razmakom</mat-hint>
+        </mat-form-field>
+        <mat-form-field class="mt-1">
+          <mat-label>Strategija pivotiranja</mat-label>
+          <mat-select
+            formControlName="strategy"
+            (selectionChange)="onFieldChange()"
+          >
+            <mat-option value="bland">Blandovo pravilo</mat-option>
+            <mat-option value="lex">Leksikografsko pravilo</mat-option>
+            <mat-option value="rand">Random</mat-option>
+          </mat-select>
+        </mat-form-field>
+        <button
+          [disabled]="matrixForm.invalid"
+          mat-raised-button
+          color="primary"
+          (click)="solve()"
+        >
+          Pronađi rješenje
+        </button>
+      </form>
+    </mat-card-content>
+  </mat-card>
+
+  <mat-card style="width: 400px" class="mt-1" *ngIf="result">
+    <mat-card-title>Rješenje</mat-card-title>
+    <mat-divider></mat-divider>
+    <mat-card-content class="mt-1" fxLayout="column">
+      <ng-container *ngIf="result.status == 0">
+        <div>
+          Optimalna vrijednost funckije cilja:
+          <b>{{
+            (result.goal == "min" ? -result.table[0][0] : result.table[0][0])
+              | number: "1.0-4"
+          }}</b>
+        </div>
+        <div>
+          Optimalno rješenje
+          <b
+            >x = [
+            <ng-container *ngFor="let x of result.realBase"
+              >{{ x | number: "1.0-4" }}
+            </ng-container>
+            ]</b
+          >
+        </div>
+      </ng-container>
+
+      <ng-container *ngIf="result.status == 1">
+        Zadani problem nema rješenja.
+      </ng-container>
+
+      <ng-container *ngIf="result.status == 2">
+        <div>
+          Optimalna vrijednost funkcije cilja:
+          <b *ngIf="result.goal == 'max'">inf</b
+          ><b *ngIf="result.goal == 'min'">-inf</b>
+        </div>
+
+        <div>Rješenje je neograničeno.</div>
+      </ng-container>
+
+      <ng-container *ngIf="result.status == 3">
+        Pojavio se ciklus. Pokušajte ponovno.
+      </ng-container>
+
+      <ng-container *ngIf="result.status == 4">
+        Došlo je do greške. Provjerite jeste li sve ispravno upisali.
+      </ng-container>
+
+      <button
+        *ngIf="result.status != 4"
+        mat-raised-button
+        color="accent"
+        (click)="openDetails()"
+      >
+        Prikaži korake
+      </button>
+    </mat-card-content>
+  </mat-card>
+</div>
